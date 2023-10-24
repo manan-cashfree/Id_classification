@@ -1,0 +1,28 @@
+_target_: src.models.document_module.DocumentLitModule
+
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 0.001
+  weight_decay: 0.0
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+  _partial_: true
+  mode: min
+  factor: 0.1
+  patience: 10
+
+net:
+  _target_: timm.create_model
+  model_name: "vit_small_patch14_dinov2.lvd142m"
+  pretrained: true
+  num_classes: 4
+
+# freeze backbone and make last linear layer trainable
+freeze_and_trainable: true
+
+# compile model for faster training with pytorch 2.0
+compile: false
+
+num_classes: 4
