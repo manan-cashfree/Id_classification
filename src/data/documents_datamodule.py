@@ -142,7 +142,7 @@ class DocumentsDataModule(LightningDataModule):
     def get_sampler(self):
         """fetches the appropriate sampler to use for the train_dataloader"""
         if self.hparams.sampler == 'random':
-            return torch.utils.data.RandomSampler
+            return torch.utils.data.RandomSampler(data_source=self.data_train)
         elif self.hparams.sampler == 'imbalanced':
             ImbalancedDatasetSampler(self.data_train)
 
