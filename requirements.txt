@@ -20,7 +20,7 @@ wandb
 rootutils~=1.0.7
 pre-commit      # hooks for applying linters on commit
 rich~=13.6.0
-pytest~=7.4.2
+pytest~=7.4.3
 # sh            # for running bash commands in some tests (linux/macos only)
 
 timm~=0.9.8
