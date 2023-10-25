@@ -1,4 +1,4 @@
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, Optional
 
 import torch
 from lightning import LightningModule
@@ -40,21 +40,22 @@ class DocumentLitModule(LightningModule):
     """
 
     def __init__(
-        self,
-        net: torch.nn.Module,
-        optimizer: torch.optim.Optimizer,
-        scheduler: torch.optim.lr_scheduler,
-        compile: bool,
-        freeze_and_trainable: bool = True,
-        num_classes: int = 4
+            self,
+            net: torch.nn.Module,
+            optimizer: torch.optim.Optimizer,
+            scheduler: torch.optim.lr_scheduler,
+            compile: bool,
+            freeze_and_trainable: bool = True,
+            num_classes: int = 4
     ) -> None:
-        """Initialize a `MNISTLitModule`.
+        """Initialize a `DocumentLitModule`.
 
         :param net: The model to train.
         :param optimizer: The optimizer to use for training.
         :param scheduler: The learning rate scheduler to use for training.
         :param compile: Whether to use torch.compile.
         :param num_classes: The number of classes.
+        :param weight: The weight tensor for the loss function.
         """
         super().__init__()
 
@@ -97,7 +98,7 @@ class DocumentLitModule(LightningModule):
         self.val_acc_best.reset()
 
     def model_step(
-        self, batch: Tuple[torch.Tensor, torch.Tensor]
+            self, batch: Tuple[torch.Tensor, torch.Tensor]
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Perform a single model step on a batch of data.
 
@@ -115,7 +116,7 @@ class DocumentLitModule(LightningModule):
         return loss, preds, y
 
     def training_step(
-        self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int
+            self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int
     ) -> torch.Tensor:
         """Perform a single training step on a batch of data from the training set.
 

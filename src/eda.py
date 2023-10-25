@@ -24,6 +24,13 @@ def fiftyone_vis(dataset_dir: str):
     session = fo.launch_app(dataset)
     session.wait()
 
+@hydra.main(version_base="1.3", config_path="../configs", config_name="train.yaml")
+def view_model_transforms(cfg: DictConfig):
+    # model = hydra.utils.instantiate(cfg.model.net)
+    model = timm.create_model("", pretrained=True, num_classes=4)
+    data_config = timm.data.resolve_model_data_config(model)
+    train_transforms = timm.data.create_transform(**data_config, is_training=False)
+    print(train_transforms)
 
 @hydra.main(version_base="1.3", config_path="../configs", config_name="train.yaml")
 def main(cfg: DictConfig):
@@ -31,31 +38,9 @@ def main(cfg: DictConfig):
     train_dataset = 'data/train'
     val_dataset = 'data/val'
 
-    model = hydra.utils.instantiate(cfg.model)
-    # for name, param in model.named_parameters():
-    #     if 'head' in name:
-    #         param.requires_grad = True
-    #     else:
-    #         param.requires_grad = False
-    
-    trainable_params = sum(
-        p.numel() for p in model.parameters() if p.requires_grad
-    )
-    summary(model.net, (3, 518, 518))
-    print(f'trainable_params: {trainable_params}')
-
-    # data_config = timm.data.resolve_model_data_config(model)
-    # print(type(data_config))
-    # train_transforms = timm.data.create_transform(**data_config, is_training=True)
-    # val_transforms = timm.data.create_transform(**data_config, is_training=False)
-    # print(train_transforms)
-    # print(val_transforms)
-
-    # print(f"Instantiating datamodule <{cfg.data._target_}>")
-    # datamodule: LightningDataModule = hydra.utils.instantiate(cfg.data, data_config=data_config)
-    # datamodule.setup()
-    # fiftyone_vis(val_dataset)
+    fiftyone_vis(val_dataset)
 
 
 if __name__ == '__main__':
-    main()
+    # main()
+    view_model_transforms()

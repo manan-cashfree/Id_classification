@@ -1,5 +1,6 @@
 from typing import Any, Dict, List, Tuple
 
+import timm
 import hydra
 import rootutils
 from lightning import LightningDataModule, LightningModule, Trainer
@@ -47,8 +48,12 @@ def evaluate(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """
     assert cfg.ckpt_path
 
+    net = hydra.utils.instantiate(cfg.model.net)
+    # data config used for transforms
+    data_config = timm.data.resolve_model_data_config(net)
+    
     log.info(f"Instantiating datamodule <{cfg.data._target_}>")
-    datamodule: LightningDataModule = hydra.utils.instantiate(cfg.data)
+    datamodule: LightningDataModule = hydra.utils.instantiate(cfg.data, data_config=data_config)
 
     log.info(f"Instantiating model <{cfg.model._target_}>")
     model: LightningModule = hydra.utils.instantiate(cfg.model)

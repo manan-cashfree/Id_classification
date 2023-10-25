@@ -2,8 +2,10 @@ import os.path as osp
 from typing import Any, Dict, Optional, Tuple
 import splitfolders
 import timm
+import torch.utils.data
 from lightning import LightningDataModule
-from torch.utils.data import ConcatDataset, DataLoader, Dataset, random_split
+from torch.utils.data import DataLoader, Dataset
+from torchsampler import ImbalancedDatasetSampler
 from torchvision.datasets import ImageFolder
 from torchvision.transforms import transforms
 from src.utils import RankedLogger
@@ -57,6 +59,7 @@ class DocumentsDataModule(LightningDataModule):
             data_dir: str = "data/",
             train_val_test_split_ratio: tuple = (0.8, 0.2),
             batch_size: int = 8,
+            sampler: str = "random",
             num_workers: int = 0,
             pin_memory: bool = False,
     ) -> None:
@@ -66,6 +69,7 @@ class DocumentsDataModule(LightningDataModule):
         :param data_dir: The data directory. Defaults to `"data/"`.
         :param train_val_test_split_ratio: The ratio of split for train, val, test sets. Defaults to `(0.8, 0.2)`.
         :param batch_size: The batch size. Defaults to `8`.
+        :param sampler: The train sampler to use. Defaults to `random`.
         :param num_workers: The number of workers. Defaults to `0`.
         :param pin_memory: Whether to pin memory. Defaults to `False`.
         """
@@ -78,8 +82,8 @@ class DocumentsDataModule(LightningDataModule):
         self.val_transforms: Optional[transforms] = None
         self.data_train: Optional[Dataset] = None
         self.data_val: Optional[Dataset] = None
-        # self.data_test: Optional[Dataset] = None
 
+        # self.data_test: Optional[Dataset] = None
         self.batch_size_per_device = batch_size
 
     @property
@@ -135,6 +139,13 @@ class DocumentsDataModule(LightningDataModule):
         self.data_train = ImageFolder(train_path, self.train_transforms)
         self.data_val = ImageFolder(val_path, self.val_transforms)
 
+    def get_sampler(self):
+        """fetches the appropriate sampler to use for the train_dataloader"""
+        if self.hparams.sampler == 'random':
+            return torch.utils.data.RandomSampler
+        elif self.hparams.sampler == 'imbalanced':
+            ImbalancedDatasetSampler(self.data_train)
+
     def train_dataloader(self) -> DataLoader[Any]:
         """Create and return the train dataloader.
 
@@ -145,7 +156,7 @@ class DocumentsDataModule(LightningDataModule):
             batch_size=self.batch_size_per_device,
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
-            shuffle=True,
+            sampler=self.get_sampler(),
             persistent_workers=True
         )
 

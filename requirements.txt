@@ -28,3 +28,6 @@ omegaconf~=2.3.0
 fiftyone~=0.22.2
 packaging~=23.2
 setuptools~=68.2.2
+torchsampler
+torch-summary
+git+https://github.com/cs-mshah/split-folders

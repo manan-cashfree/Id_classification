@@ -305,6 +305,7 @@ dependencies:
       - tifffile==2023.9.26
       - timm==0.9.8
       - torch-summary==1.4.5
+      - torchsampler==0.1.2
       - tzdata==2023.3
       - tzlocal==5.2
       - universal-analytics-python3==1.1.1
