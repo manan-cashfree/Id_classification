@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader, Dataset
 from torchsampler import ImbalancedDatasetSampler
 from torchvision.datasets import ImageFolder
 from torchvision.transforms import transforms
-from src.utils import RankedLogger
+from src.utils import RankedLogger, ImageFolderWithPaths
 
 log = RankedLogger(__name__, rank_zero_only=True)
 
@@ -80,10 +80,14 @@ class DocumentsDataModule(LightningDataModule):
         self.save_hyperparameters(logger=False)
         self.train_transforms: Optional[transforms] = None
         self.val_transforms: Optional[transforms] = None
-        self.data_train: Optional[Dataset] = None
-        self.data_val: Optional[Dataset] = None
-
-        # self.data_test: Optional[Dataset] = None
+        if data_config is not None:
+            # change train transforms here
+            self.train_transforms = timm.data.create_transform(**self.hparams.data_config, is_training=False)
+            self.val_transforms = timm.data.create_transform(**self.hparams.data_config, is_training=False)
+        self.data_train: Optional[ImageFolder] = None
+        self.data_val: Optional[ImageFolder] = None
+        self.data_test: Optional[ImageFolder] = None
+        self.data_predict: Optional[ImageFolder] = None
         self.batch_size_per_device = batch_size
 
     @property
@@ -102,7 +106,16 @@ class DocumentsDataModule(LightningDataModule):
 
         Do not use it to assign state (self.x = y).
         """
-        pass
+        original_dataset = osp.join(self.hparams.data_dir, 'Documents')
+        train_path = osp.join(self.hparams.data_dir, 'train')
+        val_path = osp.join(self.hparams.data_dir, 'val')
+
+        # create train, val splits
+        if (not osp.exists(train_path)) or (not osp.exists(val_path)):
+            log.info(f"Creating train, val splits with ratio {self.hparams.train_val_test_split_ratio}")
+            splitfolders.ratio(original_dataset, output=self.hparams.data_dir,
+                               ratio=self.hparams.train_val_test_split_ratio,
+                               move='symlink')
 
     def setup(self, stage: Optional[str] = None) -> None:
         """Load data. Set variables: `self.data_train`, `self.data_val`, `self.data_test`.
@@ -122,22 +135,16 @@ class DocumentsDataModule(LightningDataModule):
                 )
             self.batch_size_per_device = self.hparams.batch_size // self.trainer.world_size
 
-        # data transformations (add rotation in case of train)
-        if self.hparams.data_config is not None:
-            self.train_transforms = timm.data.create_transform(**self.hparams.data_config, is_training=False)
-            self.val_transforms = timm.data.create_transform(**self.hparams.data_config, is_training=False)
-
         original_dataset = osp.join(self.hparams.data_dir, 'Documents')
         train_path = osp.join(self.hparams.data_dir, 'train')
         val_path = osp.join(self.hparams.data_dir, 'val')
-
-        # create train, val splits
-        if (not osp.exists(train_path)) or (not osp.exists(val_path)):
-            log.info(f"Creating train, val splits with ratio {self.hparams.train_val_test_split_ratio}")
-            splitfolders.ratio(original_dataset, output=self.hparams.data_dir, ratio=self.hparams.train_val_test_split_ratio,
-                               move='symlink')
-        self.data_train = ImageFolder(train_path, self.train_transforms)
-        self.data_val = ImageFolder(val_path, self.val_transforms)
+        if stage == 'fit':
+            self.data_train = ImageFolder(train_path, self.train_transforms)
+            self.data_val = ImageFolder(val_path, self.val_transforms)
+        if stage == 'test':
+            self.data_test = ImageFolder(original_dataset, self.val_transforms)
+        if stage == 'predict':
+            self.data_predict = ImageFolderWithPaths(train_path, transform=self.val_transforms)
 
     def get_sampler(self):
         """fetches the appropriate sampler to use for the train_dataloader"""
@@ -174,18 +181,32 @@ class DocumentsDataModule(LightningDataModule):
             persistent_workers=True
         )
 
-    # def test_dataloader(self) -> DataLoader[Any]:
-    #     """Create and return the test dataloader.
-    #
-    #     :return: The test dataloader.
-    #     """
-    #     return DataLoader(
-    #         dataset=self.data_test,
-    #         batch_size=self.batch_size_per_device,
-    #         num_workers=self.hparams.num_workers,
-    #         pin_memory=self.hparams.pin_memory,
-    #         shuffle=False,
-    #     )
+    def test_dataloader(self) -> DataLoader[Any]:
+        """Create and return the test dataloader.
+
+        :return: The test dataloader.
+        """
+        return DataLoader(
+            dataset=self.data_test,
+            batch_size=self.batch_size_per_device,
+            num_workers=self.hparams.num_workers,
+            pin_memory=self.hparams.pin_memory,
+            shuffle=False,
+        )
+
+    def predict_dataloader(self) -> DataLoader[Any]:
+        """Create and return the predict dataloader.
+
+        :return: The predict dataloader.
+        """
+        return DataLoader(
+            dataset=self.data_predict,
+            batch_size=1,
+            num_workers=self.hparams.num_workers,
+            pin_memory=self.hparams.pin_memory,
+            persistent_workers=True,
+            shuffle=False,
+        )
 
     def teardown(self, stage: Optional[str] = None) -> None:
         """Lightning hook for cleaning up after `trainer.fit()`, `trainer.validate()`,

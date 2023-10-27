@@ -1,9 +1,11 @@
 from typing import Any, Dict, Tuple, Optional
-
+import os.path as osp
 import torch
+import torch.nn.functional as F
 from lightning import LightningModule
 from torchmetrics import MaxMetric, MeanMetric
 from torchmetrics.classification.accuracy import Accuracy
+import fiftyone as fo
 
 
 class DocumentLitModule(LightningModule):
@@ -46,7 +48,8 @@ class DocumentLitModule(LightningModule):
             scheduler: torch.optim.lr_scheduler,
             compile: bool,
             freeze_and_trainable: bool = True,
-            num_classes: int = 4
+            num_classes: int = 4,
+            class_to_idx={}
     ) -> None:
         """Initialize a `DocumentLitModule`.
 
@@ -71,15 +74,19 @@ class DocumentLitModule(LightningModule):
         # metric objects for calculating and averaging accuracy across batches
         self.train_acc = Accuracy(task="multiclass", num_classes=num_classes)
         self.val_acc = Accuracy(task="multiclass", num_classes=num_classes)
-        # self.test_acc = Accuracy(task="multiclass", num_classes=num_classes)
+        self.test_acc = Accuracy(task="multiclass", num_classes=num_classes)
 
         # for averaging loss across batches
         self.train_loss = MeanMetric()
         self.val_loss = MeanMetric()
-        # self.test_loss = MeanMetric()
+        self.test_loss = MeanMetric()
 
         # for tracking best so far validation accuracy
         self.val_acc_best = MaxMetric()
+
+        # fiftyone dataset
+        self.fiftyone_dataset: Optional[fo.Dataset] = None
+        self.idx_to_class = {v: k for k, v in class_to_idx.items()}
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Perform a forward pass through the model `self.net`.
@@ -98,7 +105,7 @@ class DocumentLitModule(LightningModule):
         self.val_acc_best.reset()
 
     def model_step(
-            self, batch: Tuple[torch.Tensor, torch.Tensor]
+            self, batch: Tuple[torch.Tensor, torch.Tensor], stage='train_val',
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Perform a single model step on a batch of data.
 
@@ -111,8 +118,10 @@ class DocumentLitModule(LightningModule):
         """
         x, y = batch
         logits = self.forward(x)
-        loss = self.criterion(logits, y)
         preds = torch.argmax(logits, dim=1)
+        if stage == 'predict':
+            return preds, y, logits
+        loss = self.criterion(logits, y)
         return loss, preds, y
 
     def training_step(
@@ -163,24 +172,42 @@ class DocumentLitModule(LightningModule):
         # otherwise metric would be reset by lightning after each epoch
         self.log("val/acc_best", self.val_acc_best.compute(), sync_dist=True, prog_bar=True)
 
-    # def test_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
-    #     """Perform a single test step on a batch of data from the test set.
-    #
-    #     :param batch: A batch of data (a tuple) containing the input tensor of images and target
-    #         labels.
-    #     :param batch_idx: The index of the current batch.
-    #     """
-    #     loss, preds, targets = self.model_step(batch)
-    #
-    #     # update and log metrics
-    #     self.test_loss(loss)
-    #     self.test_acc(preds, targets)
-    #     self.log("test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True)
-    #     self.log("test/acc", self.test_acc, on_step=False, on_epoch=True, prog_bar=True)
+    def test_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
+        """Perform a single test step on a batch of data from the test set.
 
-    # def on_test_epoch_end(self) -> None:
-    #     """Lightning hook that is called when a test epoch ends."""
-    #     pass
+        :param batch: A batch of data (a tuple) containing the input tensor of images and target
+            labels.
+        :param batch_idx: The index of the current batch.
+        """
+        loss, preds, targets = self.model_step(batch)
+
+        # update and log metrics
+        self.test_loss(loss)
+        self.test_acc(preds, targets)
+        self.log("test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("test/acc", self.test_acc, on_step=False, on_epoch=True, prog_bar=True)
+
+    def predict_step(self, batch, batch_idx: int) -> None:
+        assert len(batch[0]) == 1, f"batch size length: {len(batch[0])}"
+
+        preds, _, logits = self.model_step(batch[:2], stage='predict')
+        prob = torch.max(F.softmax(logits, dim=1))
+        sample = fo.Sample(filepath=batch[2][0])
+        sample.tags = ['train']
+        sample["ground_truth"] = fo.Classification(label=self.idx_to_class[batch[1].item()])
+        sample['predictions'] = fo.Classification(
+            label=self.idx_to_class[preds.item()],
+            confidence=prob,
+            logits=logits.squeeze().cpu().numpy()
+        )
+        self.fiftyone_dataset.add_sample(sample)
+
+    def on_predict_end(self) -> None:
+        self.fiftyone_dataset.save()
+
+    def on_test_epoch_end(self) -> None:
+        """Lightning hook that is called when a test epoch ends."""
+        pass
 
     def setup(self, stage: str) -> None:
         """Lightning hook that is called at the beginning of fit (train + validate), validate,
@@ -200,6 +227,12 @@ class DocumentLitModule(LightningModule):
 
         if self.hparams.compile and stage == "fit":
             self.net = torch.compile(self.net)
+
+        if stage == 'predict':
+            try:
+                self.fiftyone_dataset = fo.load_dataset(name='Documents Dataset')
+            except Exception as e:
+                self.fiftyone_dataset = fo.Dataset(name='Documents Dataset', persistent=True, overwrite=False)
 
     def configure_optimizers(self) -> Dict[str, Any]:
         """Choose what optimizers and learning-rate schedulers to use in your optimization.

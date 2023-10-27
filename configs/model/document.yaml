@@ -1,4 +1,5 @@
 _target_: src.models.document_module.DocumentLitModule
+_convert_: all
 
 optimizer:
   _target_: torch.optim.Adam
@@ -26,3 +27,4 @@ freeze_and_trainable: true
 compile: false
 
 num_classes: 4
+class_to_idx: {}

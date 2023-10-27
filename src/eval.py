@@ -6,6 +6,9 @@ import rootutils
 from lightning import LightningDataModule, LightningModule, Trainer
 from lightning.pytorch.loggers import Logger
 from omegaconf import DictConfig
+import fiftyone as fo
+from torchvision.datasets import ImageFolder
+
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 # ------------------------------------------------------------------------------------ #
@@ -36,27 +39,28 @@ from src.utils import (
 log = RankedLogger(__name__, rank_zero_only=True)
 
 
-@task_wrapper
-def evaluate(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+# @task_wrapper
+def evaluate(cfg: DictConfig):
     """Evaluates given checkpoint on a datamodule testset.
 
     This method is wrapped in optional @task_wrapper decorator, that controls the behavior during
     failure. Useful for multiruns, saving info about the crash, etc.
 
     :param cfg: DictConfig configuration composed by Hydra.
-    :return: Tuple[dict, dict] with metrics and dict with all instantiated objects.
     """
     assert cfg.ckpt_path
 
     net = hydra.utils.instantiate(cfg.model.net)
     # data config used for transforms
     data_config = timm.data.resolve_model_data_config(net)
+    dataset_path = "data/Documents"
+    dataset = ImageFolder(dataset_path)
     
     log.info(f"Instantiating datamodule <{cfg.data._target_}>")
     datamodule: LightningDataModule = hydra.utils.instantiate(cfg.data, data_config=data_config)
 
     log.info(f"Instantiating model <{cfg.model._target_}>")
-    model: LightningModule = hydra.utils.instantiate(cfg.model)
+    model = hydra.utils.instantiate(cfg.model, class_to_idx=dataset.class_to_idx)
 
     log.info("Instantiating loggers...")
     logger: List[Logger] = instantiate_loggers(cfg.get("logger"))
@@ -76,15 +80,22 @@ def evaluate(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         log.info("Logging hyperparameters!")
         log_hyperparameters(object_dict)
 
-    log.info("Starting testing!")
-    trainer.test(model=model, datamodule=datamodule, ckpt_path=cfg.ckpt_path)
+    if cfg.task_name == 'eval':
+        log.info("Starting testing!")
+        trainer.test(model=model, datamodule=datamodule, ckpt_path=cfg.ckpt_path)
+        metric_dict = trainer.callback_metrics
+        print(metric_dict)
+    elif cfg.task_name == 'predict':
+        # for predictions use trainer.predict(...)
+        trainer.predict(model=model, datamodule=datamodule, ckpt_path=cfg.ckpt_path)
+        # model = model.load_from_checkpoint(cfg.ckpt_path)
+        # datamodule.setup()
+        # predict(cfg, model, datamodule.val_transforms)
 
-    # for predictions use trainer.predict(...)
-    # predictions = trainer.predict(model=model, dataloaders=dataloaders, ckpt_path=cfg.ckpt_path)
 
-    metric_dict = trainer.callback_metrics
-
-    return metric_dict, object_dict
+# def predict(class_to_idx, model, transforms, fiftyone_dataset="Deduped dataset - automatic1"):
+#     dataset = fo.load_dataset(fiftyone_dataset)
+#     for sample in dataset:
 
 
 @hydra.main(version_base="1.3", config_path="../configs", config_name="eval.yaml")
