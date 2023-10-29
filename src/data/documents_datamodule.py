@@ -7,10 +7,14 @@ from lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset
 from torchsampler import ImbalancedDatasetSampler
 from torchvision.datasets import ImageFolder
-from torchvision.transforms import transforms
+from torchvision.transforms import v2
+from torchvision.transforms.functional import InterpolationMode
 from src.utils import RankedLogger, ImageFolderWithPaths
+import rootutils
 
 log = RankedLogger(__name__, rank_zero_only=True)
+
+rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
 
 class DocumentsDataModule(LightningDataModule):
@@ -55,7 +59,6 @@ class DocumentsDataModule(LightningDataModule):
 
     def __init__(
             self,
-            data_config: Optional[Dict],
             data_dir: str = "data/",
             train_val_test_split_ratio: tuple = (0.8, 0.2),
             batch_size: int = 8,
@@ -65,7 +68,6 @@ class DocumentsDataModule(LightningDataModule):
     ) -> None:
         """Initialize a `DocumentsDataModule`.
 
-        :param data_config: The config for transforms corresponding to the timm model.
         :param data_dir: The data directory. Defaults to `"data/"`.
         :param train_val_test_split_ratio: The ratio of split for train, val, test sets. Defaults to `(0.8, 0.2)`.
         :param batch_size: The batch size. Defaults to `8`.
@@ -78,17 +80,25 @@ class DocumentsDataModule(LightningDataModule):
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
-        self.train_transforms: Optional[transforms] = None
-        self.val_transforms: Optional[transforms] = None
-        if data_config is not None:
-            # change train transforms here
-            self.train_transforms = timm.data.create_transform(**self.hparams.data_config, is_training=False)
-            self.val_transforms = timm.data.create_transform(**self.hparams.data_config, is_training=False)
         self.data_train: Optional[ImageFolder] = None
         self.data_val: Optional[ImageFolder] = None
         self.data_test: Optional[ImageFolder] = None
         self.data_predict: Optional[ImageFolder] = None
         self.batch_size_per_device = batch_size
+
+        self.train_transforms = v2.Compose([
+            v2.Resize(size=518, interpolation=InterpolationMode.BICUBIC),
+            v2.CenterCrop(size=(518, 518)),
+            v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=True)]),
+            v2.Normalize(mean=torch.Tensor([0.4850, 0.4560, 0.4060]), std=torch.Tensor([0.2290, 0.2240, 0.2250]))
+        ])
+
+        self.val_transforms = v2.Compose([
+            v2.Resize(size=518, interpolation=InterpolationMode.BICUBIC),
+            v2.CenterCrop(size=(518, 518)),
+            v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=True)]),
+            v2.Normalize(mean=torch.Tensor([0.4850, 0.4560, 0.4060]), std=torch.Tensor([0.2290, 0.2240, 0.2250]))
+        ])
 
     @property
     def num_classes(self) -> int:

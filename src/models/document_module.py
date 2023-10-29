@@ -1,5 +1,4 @@
 from typing import Any, Dict, Tuple, Optional
-import os.path as osp
 import torch
 import torch.nn.functional as F
 from lightning import LightningModule
@@ -219,7 +218,7 @@ class DocumentLitModule(LightningModule):
         :param stage: Either `"fit"`, `"validate"`, `"test"`, or `"predict"`.
         """
         if self.hparams.freeze_and_trainable:
-            for name, param in self.net.named_parameters():
+            for name, param in self.named_parameters():
                 if 'head' in name:
                     param.requires_grad = True
                 else:

@@ -4,5 +4,5 @@ data_dir: ${paths.data_dir}
 batch_size: 8 # Needs to be divisible by the number of devices (e.g., if in a distributed setup)
 sampler: "random" # imbalanced or random
 train_val_test_split_ratio: [0.8, 0.2] # if length is 2 then only train, val splits are created
-num_workers: 7
+num_workers: 7 # set according to cpu cores
 pin_memory: False

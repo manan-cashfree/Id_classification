@@ -15,9 +15,12 @@ scheduler:
   patience: 10
 
 net:
-  _target_: timm.create_model
-  model_name: "vit_small_patch14_dinov2.lvd142m"
-  pretrained: true
+  _target_: src.models.components.dino_vit.DinoVisionTransformerClassifier
+  net:
+    _target_: torch.hub.load
+    repo_or_dir: "facebookresearch/dinov2"
+    model: "dinov2_vitb14_reg"
+  intermediate: 256
   num_classes: 4
 
 # freeze backbone and make last linear layer trainable

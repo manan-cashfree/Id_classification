@@ -50,14 +50,11 @@ def evaluate(cfg: DictConfig):
     """
     assert cfg.ckpt_path
 
-    net = hydra.utils.instantiate(cfg.model.net)
-    # data config used for transforms
-    data_config = timm.data.resolve_model_data_config(net)
     dataset_path = "data/Documents"
     dataset = ImageFolder(dataset_path)
     
     log.info(f"Instantiating datamodule <{cfg.data._target_}>")
-    datamodule: LightningDataModule = hydra.utils.instantiate(cfg.data, data_config=data_config)
+    datamodule: LightningDataModule = hydra.utils.instantiate(cfg.data)
 
     log.info(f"Instantiating model <{cfg.model._target_}>")
     model = hydra.utils.instantiate(cfg.model, class_to_idx=dataset.class_to_idx)
@@ -86,16 +83,7 @@ def evaluate(cfg: DictConfig):
         metric_dict = trainer.callback_metrics
         print(metric_dict)
     elif cfg.task_name == 'predict':
-        # for predictions use trainer.predict(...)
         trainer.predict(model=model, datamodule=datamodule, ckpt_path=cfg.ckpt_path)
-        # model = model.load_from_checkpoint(cfg.ckpt_path)
-        # datamodule.setup()
-        # predict(cfg, model, datamodule.val_transforms)
-
-
-# def predict(class_to_idx, model, transforms, fiftyone_dataset="Deduped dataset - automatic1"):
-#     dataset = fo.load_dataset(fiftyone_dataset)
-#     for sample in dataset:
 
 
 @hydra.main(version_base="1.3", config_path="../configs", config_name="eval.yaml")

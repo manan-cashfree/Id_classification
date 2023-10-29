@@ -53,12 +53,8 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     if cfg.get("seed"):
         L.seed_everything(cfg.seed, workers=True)
 
-    net = hydra.utils.instantiate(cfg.model.net)
-    # data config used for transforms
-    data_config = timm.data.resolve_model_data_config(net)
-
     log.info(f"Instantiating datamodule <{cfg.data._target_}>")
-    datamodule: LightningDataModule = hydra.utils.instantiate(cfg.data, data_config=data_config)
+    datamodule: LightningDataModule = hydra.utils.instantiate(cfg.data)
 
     # calculate weight for loss function here or make a function and return via config directly
 

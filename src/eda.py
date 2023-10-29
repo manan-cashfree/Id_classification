@@ -38,21 +38,21 @@ def view_model_transforms(cfg: DictConfig):
     model = hydra.utils.instantiate(cfg.model, class_to_idx=dataset.class_to_idx)
     # model = timm.create_model("", pretrained=True, num_classes=4)
     data_config = timm.data.resolve_model_data_config(model.net)
-    # train_transforms = timm.data.create_transform(**data_config, is_training=False)
-    datamodule: LightningDataModule = hydra.utils.instantiate(cfg.data, data_config=data_config)
-    datamodule.setup(stage='predict')
-    # print(train_transforms)
-    print(dataset.class_to_idx)
-    # Create a DataLoader with batch_size 1
-    data_loader = datamodule.predict_dataloader()
-    # Iterate through the DataLoader to access the image file path
-    for batch in data_loader:
-        _, target = batch
-        image_path = model.imgs[target[0]][0]
-        print("Image Path:", image_path)
-        print("target:", target)
-        break
-    
+    train_transforms = timm.data.create_transform(**data_config, is_training=True)
+    print(train_transforms)
+
+
+@hydra.main(version_base="1.3", config_path="../configs", config_name="train.yaml")
+def view_model(cfg: DictConfig):
+    datamodule: LightningDataModule = hydra.utils.instantiate(cfg.data)
+    # model = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14_reg_lc')
+    # # summary(model, (3, 504, 504))
+    model: LightningModule = hydra.utils.instantiate(cfg.model)
+    model.setup(stage='fit')
+    trainable = sum(
+        p.numel() for p in model.parameters() if p.requires_grad
+    )
+    print(trainable)
 
 @hydra.main(version_base="1.3", config_path="../configs", config_name="train.yaml")
 def visualize(cfg: DictConfig):
@@ -65,4 +65,5 @@ def visualize(cfg: DictConfig):
 
 if __name__ == '__main__':
     # visualize()
-    view_model_transforms()
+    # view_model_transforms()
+    view_model()
