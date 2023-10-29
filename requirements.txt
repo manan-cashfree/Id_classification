@@ -31,3 +31,4 @@ setuptools~=68.2.2
 torchsampler
 torch-summary
 git+https://github.com/cs-mshah/split-folders
+xformers
