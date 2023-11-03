@@ -25,7 +25,7 @@ pytest~=7.4.2
 
 timm~=0.9.8
 omegaconf~=2.3.0
-fiftyone~=0.22.2
+fiftyone~=0.22.3
 packaging~=23.2
 setuptools~=68.2.2
 torchsampler
