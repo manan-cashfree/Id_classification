@@ -9,7 +9,6 @@ from src.utils import pylogger, rich_utils
 import torch
 from torchvision import datasets
 
-
 log = pylogger.RankedLogger(__name__, rank_zero_only=True)
 
 

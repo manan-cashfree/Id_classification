@@ -9,7 +9,6 @@ from omegaconf import DictConfig
 import fiftyone as fo
 from torchvision.datasets import ImageFolder
 
-
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 # ------------------------------------------------------------------------------------ #
 # the setup_root above is equivalent to:
@@ -50,14 +49,13 @@ def evaluate(cfg: DictConfig):
     """
     assert cfg.ckpt_path
 
-    dataset_path = "data/Documents"
-    dataset = ImageFolder(dataset_path)
-    
     log.info(f"Instantiating datamodule <{cfg.data._target_}>")
     datamodule: LightningDataModule = hydra.utils.instantiate(cfg.data)
+    datamodule.setup(cfg.task_name)
 
     log.info(f"Instantiating model <{cfg.model._target_}>")
-    model = hydra.utils.instantiate(cfg.model, class_to_idx=dataset.class_to_idx)
+    # model = hydra.utils.instantiate(cfg.model, class_to_idx=dataset.class_to_idx)
+    model = hydra.utils.instantiate(cfg.model, class_to_idx=datamodule.data_predict.class_to_idx)
 
     log.info("Instantiating loggers...")
     logger: List[Logger] = instantiate_loggers(cfg.get("logger"))

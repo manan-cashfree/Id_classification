@@ -1,20 +1,18 @@
+import os
 import os.path as osp
 from typing import Any, Dict, Optional, Tuple
 import splitfolders
-import timm
 import torch.utils.data
 from lightning import LightningDataModule
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
 from torchsampler import ImbalancedDatasetSampler
 from torchvision.datasets import ImageFolder
-from torchvision.transforms import v2
-from torchvision.transforms.functional import InterpolationMode
 from src.utils import RankedLogger, ImageFolderWithPaths
+from src.data.components import val_transforms
 import rootutils
 
-log = RankedLogger(__name__, rank_zero_only=True)
-
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
+log = RankedLogger(__name__, rank_zero_only=True)
 
 
 class DocumentsDataModule(LightningDataModule):
@@ -59,8 +57,9 @@ class DocumentsDataModule(LightningDataModule):
 
     def __init__(
             self,
+            data_train: Optional[ImageFolder],
             data_dir: str = "data/",
-            train_val_test_split_ratio: tuple = (0.8, 0.2),
+            train_val_test_split_ratio: Dict = {},
             batch_size: int = 8,
             sampler: str = "random",
             num_workers: int = 0,
@@ -68,8 +67,9 @@ class DocumentsDataModule(LightningDataModule):
     ) -> None:
         """Initialize a `DocumentsDataModule`.
 
+        :param data_train: The training ImageFolder dataset`.
         :param data_dir: The data directory. Defaults to `"data/"`.
-        :param train_val_test_split_ratio: The ratio of split for train, val, test sets. Defaults to `(0.8, 0.2)`.
+        :param train_val_test_split_ratio: The ratio of split for train, val, test sets per class.
         :param batch_size: The batch size. Defaults to `8`.
         :param sampler: The train sampler to use. Defaults to `random`.
         :param num_workers: The number of workers. Defaults to `0`.
@@ -79,26 +79,13 @@ class DocumentsDataModule(LightningDataModule):
 
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
-        self.save_hyperparameters(logger=False)
-        self.data_train: Optional[ImageFolder] = None
+        self.save_hyperparameters(logger=False, ignore=['data_train'])
+        self.data_train: Optional[ImageFolder] = data_train
         self.data_val: Optional[ImageFolder] = None
         self.data_test: Optional[ImageFolder] = None
         self.data_predict: Optional[ImageFolder] = None
         self.batch_size_per_device = batch_size
-
-        self.train_transforms = v2.Compose([
-            v2.Resize(size=518, interpolation=InterpolationMode.BICUBIC),
-            v2.CenterCrop(size=(518, 518)),
-            v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=True)]),
-            v2.Normalize(mean=torch.Tensor([0.4850, 0.4560, 0.4060]), std=torch.Tensor([0.2290, 0.2240, 0.2250]))
-        ])
-
-        self.val_transforms = v2.Compose([
-            v2.Resize(size=518, interpolation=InterpolationMode.BICUBIC),
-            v2.CenterCrop(size=(518, 518)),
-            v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=True)]),
-            v2.Normalize(mean=torch.Tensor([0.4850, 0.4560, 0.4060]), std=torch.Tensor([0.2290, 0.2240, 0.2250]))
-        ])
+        self.val_transforms = val_transforms
 
     @property
     def num_classes(self) -> int:
@@ -119,13 +106,17 @@ class DocumentsDataModule(LightningDataModule):
         original_dataset = osp.join(self.hparams.data_dir, 'Documents')
         train_path = osp.join(self.hparams.data_dir, 'train')
         val_path = osp.join(self.hparams.data_dir, 'val')
-
         # create train, val splits
         if (not osp.exists(train_path)) or (not osp.exists(val_path)):
-            log.info(f"Creating train, val splits with ratio {self.hparams.train_val_test_split_ratio}")
-            splitfolders.ratio(original_dataset, output=self.hparams.data_dir,
-                               ratio=self.hparams.train_val_test_split_ratio,
-                               move='symlink')
+            dummy_link_dir = osp.join(self.hparams.data_dir, 'dummy_dir')
+            os.makedirs(dummy_link_dir, exist_ok=True)
+            for subdir, ratio in self.hparams.train_val_test_split_ratio.items():
+                log.info(f"{subdir}: Creating splits with ratio {ratio}")
+                input_path = osp.join(dummy_link_dir, subdir)
+                os.symlink(osp.join(original_dataset, subdir), input_path)
+                splitfolders.ratio(dummy_link_dir, output=self.hparams.data_dir,
+                                   ratio=ratio,
+                                   move='symlink')
 
     def setup(self, stage: Optional[str] = None) -> None:
         """Load data. Set variables: `self.data_train`, `self.data_val`, `self.data_test`.
@@ -146,15 +137,13 @@ class DocumentsDataModule(LightningDataModule):
             self.batch_size_per_device = self.hparams.batch_size // self.trainer.world_size
 
         original_dataset = osp.join(self.hparams.data_dir, 'Documents')
-        train_path = osp.join(self.hparams.data_dir, 'train')
         val_path = osp.join(self.hparams.data_dir, 'val')
         if stage == 'fit':
-            self.data_train = ImageFolder(train_path, self.train_transforms)
             self.data_val = ImageFolder(val_path, self.val_transforms)
         if stage == 'test':
             self.data_test = ImageFolder(original_dataset, self.val_transforms)
         if stage == 'predict':
-            self.data_predict = ImageFolderWithPaths(train_path, transform=self.val_transforms)
+            self.data_predict = ImageFolderWithPaths(val_path, transform=self.val_transforms)
 
     def get_sampler(self):
         """fetches the appropriate sampler to use for the train_dataloader"""

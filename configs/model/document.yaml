@@ -20,8 +20,9 @@ net:
     _target_: torch.hub.load
     repo_or_dir: "facebookresearch/dinov2"
     model: "dinov2_vitb14_reg"
-  intermediate: 256
+  in_features: 768
   num_classes: 4
+  layer_params: []
 
 # freeze backbone and make last linear layer trainable
 freeze_and_trainable: true

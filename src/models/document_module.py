@@ -56,8 +56,9 @@ class DocumentLitModule(LightningModule):
         :param optimizer: The optimizer to use for training.
         :param scheduler: The learning rate scheduler to use for training.
         :param compile: Whether to use torch.compile.
+        :param freeze_and_trainable: Freeze the backbone and make head trainable. Default True.
         :param num_classes: The number of classes.
-        :param weight: The weight tensor for the loss function.
+        :param class_to_idx: Dictionary mapping from classes to index.
         """
         super().__init__()
 
@@ -109,8 +110,9 @@ class DocumentLitModule(LightningModule):
         """Perform a single model step on a batch of data.
 
         :param batch: A batch of data (a tuple) containing the input tensor of images and target labels.
+        :param stage: [train_val, predict]
 
-        :return: A tuple containing (in order):
+        :return: A tuple containing (in order - for stage=train_val):
             - A tensor of losses.
             - A tensor of predictions.
             - A tensor of target labels.
@@ -192,7 +194,7 @@ class DocumentLitModule(LightningModule):
         preds, _, logits = self.model_step(batch[:2], stage='predict')
         prob = torch.max(F.softmax(logits, dim=1))
         sample = fo.Sample(filepath=batch[2][0])
-        sample.tags = ['train']
+        sample.tags = ['val']
         sample["ground_truth"] = fo.Classification(label=self.idx_to_class[batch[1].item()])
         sample['predictions'] = fo.Classification(
             label=self.idx_to_class[preds.item()],
