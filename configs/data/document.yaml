@@ -3,11 +3,11 @@ _convert_: all
 data_train:
   _target_: src.data.components.transforms.CustomImageFolder
   root: ${paths.data_dir}/train
-  transform_prob: 0.2
-  min_crop_percent: 0.50
+  transform_prob: 0.3
+  min_crop_percent: 0.70
   max_crop_percent: 0.75
 data_dir: ${paths.data_dir}
-batch_size: 8 # Needs to be divisible by the number of devices (e.g., if in a distributed setup)
+batch_size: 16 # Needs to be divisible by the number of devices (e.g., if in a distributed setup)
 sampler: "random" # imbalanced or random
 train_val_test_split_ratio: {
   "Aadhaar Front": [0.8, 0.2],
@@ -15,5 +15,5 @@ train_val_test_split_ratio: {
   "PAN": [0.8, 0.2],
   "Invalid": [0.6, 0.4]
 } # if length is 2, then only train, val splits are created
-num_workers: 7 # set according to cpu cores
-pin_memory: False
+num_workers: 2 # set according to cpu cores
+pin_memory: True

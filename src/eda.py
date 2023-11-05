@@ -74,6 +74,6 @@ def visualize(cfg: DictConfig):
 
 
 if __name__ == '__main__':
-    # visualize()
+    visualize()
     # view_model_transforms()
-    view_model()
+    # view_model()

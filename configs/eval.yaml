@@ -15,4 +15,4 @@ task_name: "predict" # predict or eval
 tags: ["dev"]
 
 # passing checkpoint path is necessary for evaluation
-ckpt_path: ${paths.root_dir}/logs/dinov2_b.ckpt
+ckpt_path: ${paths.root_dir}/logs/dinov2_b_linear.ckpt

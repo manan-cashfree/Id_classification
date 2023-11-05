@@ -12,7 +12,7 @@ scheduler:
   _partial_: true
   mode: min
   factor: 0.1
-  patience: 10
+  patience: 5
 
 net:
   _target_: src.models.components.dino_vit.DinoVisionTransformerClassifier
@@ -22,9 +22,9 @@ net:
     model: "dinov2_vitb14_reg"
   in_features: 768
   num_classes: 4
-  layer_params: []
+  layer_params: [] # pass empty list for a single linear layer
 
-# freeze backbone and make last linear layer trainable
+# freeze backbone and make head trainable
 freeze_and_trainable: true
 
 # compile model for faster training with pytorch 2.0

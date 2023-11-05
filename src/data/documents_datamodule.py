@@ -117,6 +117,7 @@ class DocumentsDataModule(LightningDataModule):
                 splitfolders.ratio(dummy_link_dir, output=self.hparams.data_dir,
                                    ratio=ratio,
                                    move='symlink')
+                os.unlink(input_path)  # important
 
     def setup(self, stage: Optional[str] = None) -> None:
         """Load data. Set variables: `self.data_train`, `self.data_val`, `self.data_test`.
@@ -138,6 +139,7 @@ class DocumentsDataModule(LightningDataModule):
 
         original_dataset = osp.join(self.hparams.data_dir, 'Documents')
         val_path = osp.join(self.hparams.data_dir, 'val')
+        train_path = osp.join(self.hparams.data_dir, 'train')
         if stage == 'fit':
             self.data_val = ImageFolder(val_path, self.val_transforms)
         if stage == 'test':

@@ -20,7 +20,7 @@ val_transforms = v2.Compose([
 
 
 class CustomImageFolder(ImageFolder):
-    def __init__(self, transform_prob=0.2, min_crop_percent=0.5, max_crop_percent=0.75, *args, **kwargs):
+    def __init__(self, transform_prob=0.3, min_crop_percent=0.70, max_crop_percent=0.75, *args, **kwargs):
         super(CustomImageFolder, self).__init__(*args, **kwargs)
         self.transform_prob = transform_prob
         self.min_crop_percent = min_crop_percent
@@ -38,6 +38,7 @@ class CustomImageFolder(ImageFolder):
                 [
                     v2.RandomHorizontalFlip(p=1.0),
                     v2.RandomVerticalFlip(p=1.0),
+                    v2.RandomGrayscale(p=1.0),
                     v2.RandomCrop((round(height*crop_percent), round(width*crop_percent)))
                 ]
             )
