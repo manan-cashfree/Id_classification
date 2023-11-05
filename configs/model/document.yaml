@@ -11,8 +11,8 @@ scheduler:
   _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
   _partial_: true
   mode: min
-  factor: 0.1
-  patience: 5
+  factor: 0.33
+  patience: 3
 
 net:
   _target_: src.models.components.dino_vit.DinoVisionTransformerClassifier
@@ -22,7 +22,7 @@ net:
     model: "dinov2_vitb14_reg"
   in_features: 768
   num_classes: 4
-  layer_params: [] # pass empty list for a single linear layer
+  layer_params: [256] # pass empty list for a single linear layer
 
 # freeze backbone and make head trainable
 freeze_and_trainable: true
