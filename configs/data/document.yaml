@@ -3,7 +3,7 @@ _convert_: all
 data_train:
   _target_: src.data.components.transforms.CustomImageFolder
   root: ${paths.data_dir}/train
-  transform_prob: 0.3
+  transform_prob: 0.4
   min_crop_percent: 0.70
   max_crop_percent: 0.75
 data_dir: ${paths.data_dir}

@@ -6,6 +6,8 @@ import rootutils
 from lightning import Callback, LightningDataModule, LightningModule, Trainer
 from lightning.pytorch.loggers import Logger
 from omegaconf import DictConfig
+from sklearn.utils.class_weight import compute_class_weight
+import numpy as np
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 # ------------------------------------------------------------------------------------ #
@@ -63,9 +65,13 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     datamodule: LightningDataModule = hydra.utils.instantiate(cfg.data)
 
     # calculate weight for loss function here or make a function and return via config directly
+    labels = [label for _, label in datamodule.data_train.samples]
+    class_weights = compute_class_weight('balanced', classes=np.unique(labels), y=labels)
+    class_weights[2], class_weights[3] = class_weights[3], class_weights[2]
+    log.info(f"class weights: {class_weights}")
 
     log.info(f"Instantiating model <{cfg.model._target_}>")
-    model: LightningModule = hydra.utils.instantiate(cfg.model)
+    model: LightningModule = hydra.utils.instantiate(cfg.model, weight=class_weights)
 
     log.info("Instantiating callbacks...")
     callbacks: List[Callback] = instantiate_callbacks(cfg.get("callbacks"))

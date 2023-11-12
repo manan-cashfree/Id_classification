@@ -145,7 +145,7 @@ class DocumentsDataModule(LightningDataModule):
         if stage == 'test':
             self.data_test = ImageFolder(original_dataset, self.val_transforms)
         if stage == 'predict':
-            self.data_predict = ImageFolderWithPaths(val_path, transform=self.val_transforms)
+            self.data_predict = ImageFolderWithPaths(train_path, transform=self.val_transforms)
 
     def get_sampler(self):
         """fetches the appropriate sampler to use for the train_dataloader"""

@@ -40,7 +40,7 @@ class CustomImageFolder(ImageFolder):
                     v2.RandomVerticalFlip(p=1.0),
                     v2.RandomGrayscale(p=1.0),
                     v2.RandomCrop((round(height*crop_percent), round(width*crop_percent)))
-                ]
+                ], p=[1, 1, 1, 9]
             )
             img = random_custom_transform(img)
             target = self.class_to_idx['Invalid']
