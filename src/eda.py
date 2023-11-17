@@ -59,18 +59,15 @@ def view_model(cfg: DictConfig):
 
 @hydra.main(version_base="1.3", config_path="../configs", config_name="train.yaml")
 def visualize(cfg: DictConfig):
-    original_dataset = 'data/Documents'
-    train_dataset = 'data/train'
-    val_dataset = 'data/val'
     datamodule: LightningDataModule = hydra.utils.instantiate(cfg.data)
     datamodule.setup('fit')
-    # fiftyone_vis(original_dataset)
     dataset = datamodule.data_train
-    idx_to_class = {v: k for k, v in dataset.class_to_idx.items()}
-    img, target = next(iter(dataset))
-    img = img.unsqueeze(0)
-    print(f'img shape: {img.shape}, target: {idx_to_class[target]}')
-    plot(img)
+    imgs = []
+    num_imgs = 4
+    for _ in range(num_imgs):
+        im, _ = next(iter(dataset))
+        imgs.append(im)
+    plot(imgs)
 
 
 if __name__ == '__main__':

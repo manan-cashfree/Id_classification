@@ -64,6 +64,7 @@ class DocumentsDataModule(LightningDataModule):
             sampler: str = "random",
             num_workers: int = 0,
             pin_memory: bool = False,
+            predict_split: str = "val"
     ) -> None:
         """Initialize a `DocumentsDataModule`.
 
@@ -139,13 +140,13 @@ class DocumentsDataModule(LightningDataModule):
 
         original_dataset = osp.join(self.hparams.data_dir, 'Documents')
         val_path = osp.join(self.hparams.data_dir, 'val')
-        train_path = osp.join(self.hparams.data_dir, 'train')
+        predict_path = osp.join(self.hparams.data_dir, self.hparams.predict_split)
         if stage == 'fit':
             self.data_val = ImageFolder(val_path, self.val_transforms)
         if stage == 'test':
             self.data_test = ImageFolder(original_dataset, self.val_transforms)
         if stage == 'predict':
-            self.data_predict = ImageFolderWithPaths(train_path, transform=self.val_transforms)
+            self.data_predict = ImageFolderWithPaths(predict_path, transform=self.val_transforms)
 
     def get_sampler(self):
         """fetches the appropriate sampler to use for the train_dataloader"""

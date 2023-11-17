@@ -15,4 +15,4 @@ task_name: "predict" # predict or eval
 tags: ["dev"]
 
 # passing checkpoint path is necessary for evaluation
-ckpt_path: ${paths.root_dir}/logs/last.ckpt
+ckpt_path: ${paths.root_dir}/logs/train/runs/2023-11-14_06-29-44/checkpoints/last.ckpt

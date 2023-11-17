@@ -7,7 +7,7 @@ setup(
     version="0.0.1",
     description="Classify documents",
     author="Manan Shah",
-    author_email="",
+    author_email="manan.tushar@cashfree.com",
     url="https://github.com/user/project",
     install_requires=["lightning", "hydra-core"],
     packages=find_packages(),

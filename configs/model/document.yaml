@@ -31,4 +31,4 @@ freeze_and_trainable: true
 compile: false
 
 num_classes: 4
-class_to_idx: {}
+class_to_idx: {'Aadhaar Front': 0, 'Aadhaar back': 1, 'Invalid': 2, 'PAN': 3}

@@ -54,7 +54,6 @@ def evaluate(cfg: DictConfig):
     datamodule.setup(cfg.task_name)
 
     log.info(f"Instantiating model <{cfg.model._target_}>")
-    # model = hydra.utils.instantiate(cfg.model, class_to_idx=dataset.class_to_idx)
     model = hydra.utils.instantiate(cfg.model, class_to_idx=datamodule.data_predict.class_to_idx)
 
     log.info("Instantiating loggers...")
@@ -81,6 +80,7 @@ def evaluate(cfg: DictConfig):
         metric_dict = trainer.callback_metrics
         print(metric_dict)
     elif cfg.task_name == 'predict':
+        log.info("Starting prediction!")
         trainer.predict(model=model, datamodule=datamodule, ckpt_path=cfg.ckpt_path)
 
 

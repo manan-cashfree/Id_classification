@@ -5,7 +5,7 @@ from torchvision.transforms.v2 import functional as F
 plt.rcParams["savefig.bbox"] = 'tight'
 
 
-def plot(imgs: torch.Tensor, row_title=None, **imshow_kwargs):
+def plot(imgs, row_title=None, **imshow_kwargs):
     """Perform a single validation step on a batch of data from the validation set.
 
     :param imgs: A batch of images [N,C,H,W]

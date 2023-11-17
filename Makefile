@@ -28,3 +28,12 @@ test-full: ## Run all tests
 
 train: ## Train the model
 	python src/train.py
+
+eval-val: ## run eval for val split and add to fiftyone dataset
+	python src/eval.py trainer=mps data.predict_split=val
+
+eval-train: ## run eval for train split and add to fiftyone dataset
+	python src/eval.py trainer=mps data.predict_split=train
+
+predict: ## run prediction on a single image
+	python src/predict.py

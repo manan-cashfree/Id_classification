@@ -17,3 +17,4 @@ train_val_test_split_ratio: {
 } # if length is 2, then only train, val splits are created
 num_workers: 2 # set according to cpu cores
 pin_memory: True
+predict_split: "train" # split to run prediction and add to fiftyone

@@ -47,7 +47,6 @@ class DocumentLitModule(LightningModule):
             scheduler: torch.optim.lr_scheduler,
             compile: bool,
             freeze_and_trainable: bool = True,
-            weight: Optional[List] = None,
             num_classes: int = 4,
             class_to_idx={}
     ) -> None:
@@ -58,7 +57,6 @@ class DocumentLitModule(LightningModule):
         :param scheduler: The learning rate scheduler to use for training.
         :param compile: Whether to use torch.compile.
         :param freeze_and_trainable: Freeze the backbone and make head trainable. Default True.
-        :param weight: Add weight to CrossEntropyLoss.
         :param num_classes: The number of classes.
         :param class_to_idx: Dictionary mapping from classes to index.
         """
@@ -71,7 +69,7 @@ class DocumentLitModule(LightningModule):
         self.net = net
 
         # loss function
-        self.criterion = torch.nn.CrossEntropyLoss(torch.Tensor(weight))
+        self.criterion = torch.nn.CrossEntropyLoss()
 
         # metric objects for calculating and averaging accuracy across batches
         self.train_acc = Accuracy(task="multiclass", num_classes=num_classes)
@@ -195,8 +193,12 @@ class DocumentLitModule(LightningModule):
 
         preds, _, logits = self.model_step(batch[:2], stage='predict')
         prob = torch.max(F.softmax(logits, dim=1))
-        sample = fo.Sample(filepath=batch[2][0])
-        sample.tags = ['train']
+        file = batch[2][0]
+        sample = fo.Sample(filepath=file)
+        if 'val' in file:
+            sample.tags = ['val']
+        else:
+            sample.tags = ['train']
         sample["ground_truth"] = fo.Classification(label=self.idx_to_class[batch[1].item()])
         sample['predictions'] = fo.Classification(
             label=self.idx_to_class[preds.item()],
@@ -211,6 +213,14 @@ class DocumentLitModule(LightningModule):
     def on_test_epoch_end(self) -> None:
         """Lightning hook that is called when a test epoch ends."""
         pass
+
+    def inference_step(self, img: torch.Tensor):
+        """returns label, softmax outputs dict"""
+        logits = self.forward(img)
+        preds = torch.argmax(logits, dim=1)
+        conf = F.softmax(logits, dim=1)
+        conf_dict = {self.idx_to_class[i]: conf[0, i].item() for i in range(conf.shape[1])}
+        return self.idx_to_class[preds.item()], conf_dict
 
     def setup(self, stage: str) -> None:
         """Lightning hook that is called at the beginning of fit (train + validate), validate,
