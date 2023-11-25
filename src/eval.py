@@ -1,13 +1,9 @@
-from typing import Any, Dict, List, Tuple
-
-import timm
+from typing import List
 import hydra
 import rootutils
-from lightning import LightningDataModule, LightningModule, Trainer
+from lightning import LightningDataModule, Trainer
 from lightning.pytorch.loggers import Logger
 from omegaconf import DictConfig
-import fiftyone as fo
-from torchvision.datasets import ImageFolder
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 # ------------------------------------------------------------------------------------ #
@@ -33,6 +29,7 @@ from src.utils import (
     instantiate_loggers,
     log_hyperparameters,
     task_wrapper,
+    add_to_fiftyone
 )
 
 log = RankedLogger(__name__, rank_zero_only=True)
@@ -81,7 +78,9 @@ def evaluate(cfg: DictConfig):
         print(metric_dict)
     elif cfg.task_name == 'predict':
         log.info("Starting prediction!")
-        trainer.predict(model=model, datamodule=datamodule, ckpt_path=cfg.ckpt_path)
+        predictions = trainer.predict(model=model, datamodule=datamodule, ckpt_path=cfg.ckpt_path, return_predictions=True)
+        log.info("adding to fiftyone dataset")
+        add_to_fiftyone(predictions, 'Documents Dataset')
 
 
 @hydra.main(version_base="1.3", config_path="../configs", config_name="eval.yaml")

@@ -4,7 +4,6 @@ import torch.nn.functional as F
 from lightning import LightningModule
 from torchmetrics import MaxMetric, MeanMetric
 from torchmetrics.classification.accuracy import Accuracy
-import fiftyone as fo
 
 
 class DocumentLitModule(LightningModule):
@@ -84,8 +83,6 @@ class DocumentLitModule(LightningModule):
         # for tracking best so far validation accuracy
         self.val_acc_best = MaxMetric()
 
-        # fiftyone dataset
-        self.fiftyone_dataset: Optional[fo.Dataset] = None
         self.idx_to_class = {v: k for k, v in class_to_idx.items()}
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -188,27 +185,22 @@ class DocumentLitModule(LightningModule):
         self.log("test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log("test/acc", self.test_acc, on_step=False, on_epoch=True, prog_bar=True)
 
-    def predict_step(self, batch, batch_idx: int) -> None:
+    def predict_step(self, batch, batch_idx: int) -> Dict:
         assert len(batch[0]) == 1, f"batch size length: {len(batch[0])}"
 
         preds, _, logits = self.model_step(batch[:2], stage='predict')
         prob = torch.max(F.softmax(logits, dim=1))
         file = batch[2][0]
-        sample = fo.Sample(filepath=file)
-        if 'val' in file:
-            sample.tags = ['val']
-        else:
-            sample.tags = ['train']
-        sample["ground_truth"] = fo.Classification(label=self.idx_to_class[batch[1].item()])
-        sample['predictions'] = fo.Classification(
-            label=self.idx_to_class[preds.item()],
-            confidence=prob,
-            logits=logits.squeeze().cpu().numpy()
-        )
-        self.fiftyone_dataset.add_sample(sample)
+        return {
+            "file": file,
+            "ground_truth": self.idx_to_class[batch[1].item()],
+            "label": self.idx_to_class[preds.item()],
+            "confidence": prob,
+            "logits": logits.squeeze().cpu().numpy()
+        }
 
     def on_predict_end(self) -> None:
-        self.fiftyone_dataset.save()
+        pass
 
     def on_test_epoch_end(self) -> None:
         """Lightning hook that is called when a test epoch ends."""
@@ -240,12 +232,6 @@ class DocumentLitModule(LightningModule):
 
         if self.hparams.compile and stage == "fit":
             self.net = torch.compile(self.net)
-
-        if stage == 'predict':
-            try:
-                self.fiftyone_dataset = fo.load_dataset(name='Documents Dataset')
-            except Exception as e:
-                self.fiftyone_dataset = fo.Dataset(name='Documents Dataset', persistent=True, overwrite=False)
 
     def configure_optimizers(self) -> Dict[str, Any]:
         """Choose what optimizers and learning-rate schedulers to use in your optimization.

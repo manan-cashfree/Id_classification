@@ -13,12 +13,10 @@ def plot(imgs, row_title=None, **imshow_kwargs):
     """
     if not isinstance(imgs[0], list):
         # Make a 2d grid even if there's just 1 row
-        print(f'single image')
         imgs = [imgs]
 
     num_rows = len(imgs)
     num_cols = len(imgs[0])
-    print(f'num_row: {num_rows}, num_cols: {num_cols}')
     _, axs = plt.subplots(nrows=num_rows, ncols=num_cols, squeeze=False)
     for row_idx, row in enumerate(imgs):
         for col_idx, img in enumerate(row):
@@ -26,7 +24,6 @@ def plot(imgs, row_title=None, **imshow_kwargs):
             img = F.to_dtype(img, torch.uint8, scale=True)
             ax = axs[row_idx, col_idx]
             ax.imshow(img.permute(1, 2, 0).numpy(), **imshow_kwargs)
-            print(f'type(img): {type(img)}, shape: {img.shape}')
             ax.set(xticklabels=[], yticklabels=[], xticks=[], yticks=[])
 
     if row_title is not None:

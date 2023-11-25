@@ -1,12 +1,11 @@
 import warnings
 from importlib.util import find_spec
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple, List
 
 from omegaconf import DictConfig
 
 from src.utils import pylogger, rich_utils
-
-import torch
+import fiftyone as fo
 from torchvision import datasets
 
 log = pylogger.RankedLogger(__name__, rank_zero_only=True)
@@ -136,3 +135,25 @@ class ImageFolderWithPaths(datasets.ImageFolder):
         # make a new tuple that includes original and the path
         tuple_with_path = (original_tuple + (path,))
         return tuple_with_path
+
+
+def add_to_fiftyone(predictions: List[Dict], dataset_name: str = 'Documents Dataset Duplicate'):
+    """add predictions to a fiftyone dataset"""
+    try:
+        fiftyone_dataset: fo.Dataset = fo.load_dataset(name=dataset_name)
+    except Exception as e:
+        fiftyone_dataset = fo.Dataset(name=dataset_name, persistent=True, overwrite=False)
+    for pred in predictions:
+        sample = fo.Sample(filepath=pred['file'])
+        if 'val' in pred['file']:
+            sample.tags = ['val']
+        else:
+            sample.tags = ['train']
+        sample["ground_truth"] = fo.Classification(label=pred['ground_truth'])
+        sample['predictions'] = fo.Classification(
+            label=pred['label'],
+            confidence=pred['confidence'],
+            logits=pred['logits']
+        )
+        fiftyone_dataset.add_sample(sample)
+    fiftyone_dataset.save()
