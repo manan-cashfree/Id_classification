@@ -1,33 +1,45 @@
-import os
+from pathlib import Path
 from PIL import Image
-from typing import Any, Dict, List, Optional, Tuple
+from typing import BinaryIO, Tuple
 import hydra
-import lightning as L
-import rootutils
-from lightning import Callback, LightningDataModule, LightningModule
+from hydra import initialize, compose
+from lightning import LightningModule
 import torch
-from torchvision.datasets import ImageFolder
-from omegaconf import DictConfig
 import rootutils
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 from src.models.document_module import DocumentLitModule
 from src.data.components import val_transforms
 
-@hydra.main(version_base="1.3", config_path="../configs", config_name="eval.yaml")
-def predict(cfg: DictConfig, img_name:str = 'test.jpg'):
-    net = hydra.utils.instantiate(cfg.model.net)
-    model = DocumentLitModule.load_from_checkpoint(cfg.ckpt_path, net=net, class_to_idx=cfg.model.class_to_idx)
-    model.eval()
+
+def get_model() -> LightningModule:
+    """fetch the trained model in eval mode for inference"""
+    with initialize(version_base="1.3", config_path="../configs"):
+        cfg = compose(config_name="eval")
+        net = hydra.utils.instantiate(cfg.model.net)
+        doc_model: LightningModule = DocumentLitModule.load_from_checkpoint(cfg.ckpt_path, net=net,
+                                                                            class_to_idx=cfg.model.class_to_idx)
+        doc_model.eval()
+        return doc_model
+
+
+def predict(model: LightningModule, img: str | bytes | Path | BinaryIO) -> Tuple[str, float]:
+    """
+
+    Args:
+        model (LightningModule): trained model
+        img: input image used for prediction
+    """
     # load image and apply transforms
-    img = Image.open(os.path.join(cfg.paths.data_dir, img_name))
-    img = val_transforms(img)
-    if img.dim() == 3:
-        img = img.unsqueeze(0)
+    pil_img = Image.open(img)
+    pil_img = val_transforms(pil_img)
+    if pil_img.dim() == 3:
+        pil_img = pil_img.unsqueeze(0)
     with torch.no_grad():
-        pred, conf = model.inference_step(img)
-        print(pred, conf)
+        pred, conf = model.inference_step(pil_img)
+        return pred, conf
 
 
 if __name__ == '__main__':
-    predict()
+    document_model = get_model()
+    predict(document_model, "../data/test.jpg")

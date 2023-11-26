@@ -211,8 +211,7 @@ class DocumentLitModule(LightningModule):
         logits = self.forward(img)
         preds = torch.argmax(logits, dim=1)
         conf = F.softmax(logits, dim=1)
-        conf_dict = {self.idx_to_class[i]: conf[0, i].item() for i in range(conf.shape[1])}
-        return self.idx_to_class[preds.item()], conf_dict
+        return self.idx_to_class[preds.item()], torch.max(conf).item()
 
     def setup(self, stage: str) -> None:
         """Lightning hook that is called at the beginning of fit (train + validate), validate,

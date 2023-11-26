@@ -31,5 +31,7 @@ setuptools
 torchsampler
 torch-summary
 git+https://github.com/cs-mshah/split-folders
-xformers
+xformers        # works only in CUDA environment
 matplotlib
+fastapi
+uvicorn[standard]
