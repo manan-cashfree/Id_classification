@@ -28,3 +28,4 @@ def get_document_type(img_file: UploadFile) -> PredictSchema:
         Class=pred,
         score=conf
     )
+

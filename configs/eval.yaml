@@ -10,7 +10,7 @@ defaults:
   - extras: default
   - hydra: default
 
-task_name: "predict" # predict or eval
+task_name: "predict" # [predict, eval]
 
 tags: ["dev"]
 

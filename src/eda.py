@@ -35,6 +35,7 @@ def fiftyone_vis(dataset_dir: str):
 
 @hydra.main(version_base="1.3", config_path="../configs", config_name="train.yaml")
 def view_model_transforms(cfg: DictConfig):
+    torch.hub.set_dir(cfg.paths.torch_hub_dir)
     dataset_path = "data/Documents"
     dataset = ImageFolder(dataset_path)
 
@@ -47,6 +48,7 @@ def view_model_transforms(cfg: DictConfig):
 
 @hydra.main(version_base="1.3", config_path="../configs", config_name="train.yaml")
 def view_model(cfg: DictConfig):
+    torch.hub.set_dir(cfg.paths.torch_hub_dir)
     # model = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14_reg_lc')
     # # summary(model, (3, 518, 518))
     model: LightningModule = hydra.utils.instantiate(cfg.model)

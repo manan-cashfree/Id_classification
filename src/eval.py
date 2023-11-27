@@ -1,6 +1,7 @@
 from typing import List
 import hydra
 import rootutils
+import torch
 from lightning import LightningDataModule, Trainer
 from lightning.pytorch.loggers import Logger
 from omegaconf import DictConfig
@@ -89,6 +90,7 @@ def main(cfg: DictConfig) -> None:
 
     :param cfg: DictConfig configuration composed by Hydra.
     """
+    torch.hub.set_dir(cfg.paths.torch_hub_dir)
     # apply extra utilities
     # (e.g. ask for tags if none are provided in cfg, print cfg tree, etc.)
     extras(cfg)

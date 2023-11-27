@@ -1,0 +1,14 @@
+# @package _global_
+
+defaults:
+  - _self_
+  - data: null
+  - model: prod
+  - logger: null
+  - trainer: null
+  - paths: default
+  - extras: null
+  - hydra: null
+
+# pass checkpoint path for inferencing
+ckpt_path: ${paths.root_dir}/model.ckpt
