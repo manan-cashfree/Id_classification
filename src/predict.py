@@ -15,7 +15,7 @@ from src.data.components import val_transforms
 def get_model() -> LightningModule:
     """fetch the trained model in eval mode for inference"""
     with initialize(version_base="1.3", config_path="../configs"):
-        cfg = compose(config_name="prod")
+        cfg = compose(config_name="eval")
         torch.hub.set_dir(cfg.paths.torch_hub_dir)
         net = hydra.utils.instantiate(cfg.model.net)
         doc_model: LightningModule = DocumentLitModule.load_from_checkpoint(cfg.ckpt_path, net=net,
@@ -26,21 +26,23 @@ def get_model() -> LightningModule:
 
 def predict(model: LightningModule, img: str | bytes | Path | BinaryIO) -> Tuple[str, float]:
     """
-
     Args:
         model (LightningModule): trained model
         img: input image used for prediction
     """
     # load image and apply transforms
-    pil_img = Image.open(img)
+    pil_img = Image.open(img).convert('RGB')
     pil_img = val_transforms(pil_img)
     if pil_img.dim() == 3:
         pil_img = pil_img.unsqueeze(0)
     with torch.no_grad():
         pred, conf = model.inference_step(pil_img)
-        return pred, conf
+    return pred, conf
 
 
 if __name__ == '__main__':
     document_model = get_model()
-    predict(document_model, "src/data/test.jpg")
+    cwd = Path.cwd()
+    img_path = cwd / "data/test2.png"
+    pred, conf = predict(document_model, img_path)
+    print(pred, conf)
